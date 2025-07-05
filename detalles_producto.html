@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Detalles del Producto</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0; padding: 0;
+      background: #f7f7f7;
+    }
+    header {
+      background: #2c3e50;
+      color: white;
+      padding: 1em;
+      text-align: center;
+    }
+    .back-btn {
+      display: inline-block;
+      margin: 1em;
+      padding: 0.6em 1em;
+      background: #3498db;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+      font-size: 0.95em;
+    }
+    .container {
+      padding: 1em;
+      background: white;
+      margin: 0 1em 2em 1em;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .field {
+      margin-bottom: 0.5em;
+    }
+    .label {
+      font-weight: bold;
+    }
+    a.link-bd {
+      color: #2980b9;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Detalles del Producto</h1>
+</header>
+
+<a href="index.html" class="back-btn">← Regresar al buscador</a>
+
+<div class="container" id="productDetails">
+  <p>Cargando datos...</p>
+</div>
+
+<!-- PapaParse -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js "></script>
+
+<script>
+  // Obtener el EAN desde la URL
+  const params = new URLSearchParams(window.location.search);
+  const ean = params.get("ean");
+
+  if (!ean) {
+    document.getElementById("productDetails").innerHTML = "<p>No se proporcionó un EAN.</p>";
+    throw new Error("No se encontró el EAN");
+  }
+
+  let productosBasicos = [];
+  let productosDetalle = [];
+
+  // Cargar ceramica_proyecto.csv para obtener descrpcion_es
+  Papa.parse("ceramica_proyecto.csv", {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+    delimiter: ";",
+    complete: function(results) {
+      productosBasicos = results.data;
+
+      // Cargar bricodepot_productos_detalle.csv
+      Papa.parse("bricodepot_productos_detalle.csv", {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        delimiter: ";",
+        complete: function(detalleResults) {
+          productosDetalle = detalleResults.data;
+
+          // Buscar producto por EAN
+          const detalle = productosDetalle.find(p => p["Código EAN"] === ean);
+
+          const container = document.getElementById("productDetails");
+
+          if (!detalle) {
+            container.innerHTML = `<p>No se encontraron detalles para el EAN: ${ean}</p>`;
+            return;
+          }
+
+          // Buscar descripción del otro CSV
+          const basico = productosBasicos.find(p => p.EAN === ean);
+          const descripcion = basico?.descrpcion_es || "Sin descripción";
+
+          // Mostrar información relevante
+          let html = `
+            <h2>${descripcion}</h2>
+          `;
+
+          const camposAMostrar = {
+            "URL": "Ficha del producto",
+            "Código EAN": "Código EAN",
+            "Alto de producto": "Alto de producto",
+            "Ancho de producto": "Ancho de producto",
+            "Espesor de producto": "Espesor de producto",
+            "Peso del producto": "Peso del producto",
+            "Cobertura": "Cobertura",
+            "Cobertura por paquete (m2)": "Cobertura por paquete",
+            "Unidades del pack": "Unidades del pack",
+            "Material": "Material",
+            "Rectificado": "Rectificado",
+            "Interior/Exterior/Ambos": "Uso recomendado",
+            "Antihielo": "Antihielo",
+            "Escala MOHS": "Escala MOHS",
+            "Nivel de tránsito": "Nivel de tránsito"
+          };
+
+          for (let key in camposAMostrar) {
+            const label = camposAMostrar[key];
+            const value = detalle[key];
+
+            if (value && value.trim() !== "") {
+              if (key === "URL") {
+                html += `
+                  <div class="field">
+                    <span class="label">${label}:</span><br/>
+                    <a href="${value}" target="_blank" class="link-bd">Consultar en web Bricodepot</a>
+                  </div>
+                `;
+              } else {
+                html += `
+                  <div class="field">
+                    <span class="label">${label}:</span><br/>
+                    <span>${value}</span>
+                  </div>
+                `;
+              }
+            }
+          }
+
+          container.innerHTML = html;
+        }
+      });
+    }
+  });
+</script>
+
+</body>
+</html>
